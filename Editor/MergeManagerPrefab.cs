@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
+using UnityEditor.SceneManagement;
+using UnityEngine.SceneManagement;
 
 namespace GitMerge
 {
@@ -21,7 +23,7 @@ namespace GitMerge
 
         public bool InitializeMerge(GameObject prefab)
         {
-            if(!EditorApplication.SaveCurrentSceneIfUserWantsTo())
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
             {
                 return false;
             }
@@ -38,8 +40,10 @@ namespace GitMerge
             ourPrefab = prefab;
 
             //Open a new Scene that will only display the prefab
-            previouslyOpenedScene = EditorApplication.currentScene;
-            EditorApplication.NewScene();
+            previouslyOpenedScene = SceneManager.GetActiveScene().path;
+
+            var sceneSetup = new NewSceneSetup();
+            EditorSceneManager.NewScene(sceneSetup);
 
             //make the new scene empty
             Object.DestroyImmediate(Camera.main.gameObject);
@@ -141,7 +145,7 @@ namespace GitMerge
         {
             if(!string.IsNullOrEmpty(previouslyOpenedScene))
             {
-                EditorApplication.OpenScene(previouslyOpenedScene);
+                EditorSceneManager.OpenScene(previouslyOpenedScene);
                 previouslyOpenedScene = "";
             }
         }
