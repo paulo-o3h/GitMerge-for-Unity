@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
+using UnityEditor.SceneManagement;
+using UnityEngine.SceneManagement;
 
 namespace GitMerge
 {
@@ -12,24 +14,29 @@ namespace GitMerge
 
         }
 
+        protected Scene activeScene
+        {
+            get => SceneManager.GetActiveScene();
+        }
+
         public bool InitializeMerge()
         {
             isMergingScene = true;
 
             //Ask if the scene should be saved, because...
-            if(!EditorApplication.SaveCurrentSceneIfUserWantsTo())
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
             {
                 return false;
             }
             //...we are reloading it to prevent objects from not having a scene id.
-            EditorApplication.OpenScene(EditorApplication.currentScene);
+            EditorSceneManager.OpenScene(activeScene.path);
 
             MergeAction.inMergePhase = false;
 
             ObjectDictionaries.Clear();
 
             //checkout "their" version
-            GetTheirVersionOf(EditorApplication.currentScene);
+            GetTheirVersionOf(activeScene.path);
             AssetDatabase.Refresh();
 
             //find all of "our" objects
@@ -37,7 +44,7 @@ namespace GitMerge
             ObjectDictionaries.SetAsOurObjects(ourObjects);
 
             //add "their" objects
-            EditorApplication.OpenSceneAdditive(theirFilename);
+            EditorSceneManager.OpenScene(theirFilename, OpenSceneMode.Additive);
 
             //delete scene file
             AssetDatabase.DeleteAsset(theirFilename);
@@ -46,10 +53,11 @@ namespace GitMerge
             var addedObjects = GetAllNewSceneObjects(ourObjects);
             ObjectDictionaries.SetAsTheirObjects(addedObjects);
 
+
             //create list of differences that have to be merged
             BuildAllMergeActions(ourObjects, addedObjects);
 
-            if(allMergeActions.Count == 0)
+            if (allMergeActions.Count == 0)
             {
                 window.ShowNotification(new GUIContent("No conflict found for this scene."));
                 return false;
@@ -72,7 +80,7 @@ namespace GitMerge
             var all = GetAllSceneObjects();
             var old = oldObjects;
 
-            foreach(var obj in old)
+            foreach (var obj in old)
             {
                 all.Remove(obj);
             }
@@ -91,7 +99,7 @@ namespace GitMerge
 
             ObjectDictionaries.DestroyTheirObjects();
             ObjectDictionaries.Clear();
-            EditorApplication.SaveScene();
+            EditorSceneManager.SaveScene(activeScene);
 
             allMergeActions = null;
 
@@ -112,7 +120,7 @@ namespace GitMerge
             base.AbortMerge();
 
             //Save scene
-            EditorApplication.SaveScene();
+            EditorSceneManager.SaveScene(activeScene);
         }
     }
 }
