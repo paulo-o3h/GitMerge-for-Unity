@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using UnityEditor;
 
 namespace GitMerge
 {
@@ -181,6 +182,11 @@ namespace GitMerge
             if(IsTheirs(obj))
             {
                 ourInstances.TryGetValue(obj, out result);
+                //Debug.LogFormat("It's their object {0} with result {1}", obj, result);
+                //if(result == null)
+                //{
+                //    Debug.LogFormat("No instance of {0} found in ourInstances", obj);
+                //}
             }
             return result;
         }
@@ -217,12 +223,12 @@ namespace GitMerge
         /// <returns>The copy GameObject.</returns>
         public static GameObject InstantiateFromMerging(GameObject go)
         {
-            var copy = GameObject.Instantiate(go) as GameObject;
+            var copy = Object.Instantiate(go) as GameObject;
 
             //Destroy children
             foreach(Transform t in copy.GetComponent<Transform>())
             {
-                Object.DestroyImmediate(t.gameObject);
+                UnityEngine.Object.DestroyImmediate(t.gameObject);
             }
 
             bool wasActive;
@@ -235,9 +241,54 @@ namespace GitMerge
             copy.SetActive(wasActive);
             copy.hideFlags = HideFlags.None;
             copy.name = go.name;
-            copy.GetComponent<Transform>().parent = GetOurCounterpartFor(go.GetComponent<Transform>().parent) as Transform;
-
+            SetParentInOurs(copy, go);
+            SetAllChildren(copy, go); //doing this everytime even if not needed always
+            // perhaps find a check if the parent was already found
             return copy;
+        }
+
+        private static void SetParentInOurs(GameObject copy, GameObject go)
+        {
+            //Debug.LogFormat("SetParentInOur() called for {0} with their parent being {1}",
+            //    copy,
+            //    go.transform.parent
+            //);
+            var parentCounterpart = GetOurCounterpartFor(go.transform.parent) as Transform;
+            //Debug.LogFormat("Setting the parent of {0} to {1} a counterpart of {2}",
+                //copy,
+                //parentCounterpart,
+                //go.transform.parent
+                //);
+            // Children don't always find their parents :(
+            // If the our counterpart to their object hasn't been created yet...
+            copy.transform.SetParent(
+                parentCounterpart,
+                true);
+        }
+
+        private static void SetAllChildren(GameObject copy, GameObject go)
+        {
+            //Debug.LogFormat("Looking for children of {0} found {1}",
+                //go,
+                //go.transform.childCount);
+            for(int i=0; i<go.transform.childCount; i++)
+            {
+                var theirChild = go.transform.GetChild(i);
+                var ourChild = GetOurCounterpartFor(theirChild) as Transform;
+                if(ourChild)
+                {
+                    ourChild.SetParent(copy.transform);
+                    //Debug.LogFormat("Setting parent of {0} to {1}",
+                        //ourChild,
+                        //copy
+                        //);
+                }
+                //else
+                //{
+                //    Debug.LogFormat("No corresponding child for their child {0}", theirChild);
+                //}
+            }
+
         }
 
         public static void DestroyTheirObjects()
